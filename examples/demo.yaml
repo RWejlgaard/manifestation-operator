@@ -1,0 +1,49 @@
+# A full manifestation demo. Apply step by step and watch the universe work.
+#
+#   kubectl apply -f examples/demo.yaml
+#   kubectl -n manifest-demo get pods         # nginx sits Pending / SchedulingGated
+#   kubectl -n manifest-demo apply -f -        # ...until you manifest it (see Desire below)
+#
+# The namespace opts into manifestation. Every pod born here enters limbo.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manifest-demo
+  labels:
+    manifestation.pez.sh/enabled: "true"
+---
+# This deployment will NOT schedule. Its pods get a scheduling gate at birth and sit
+# Pending until a worthy Desire releases them.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: manifest-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+---
+# The affirmation. Present tense, stated as already true. Apply this and the gate lifts.
+apiVersion: manifestation.pez.sh/v1alpha1
+kind: Desire
+metadata:
+  name: nginx-is-serving
+  namespace: manifest-demo
+spec:
+  manifestation: "My nginx pod is healthy and serving traffic"
+  intensity: chant
+  selector:
+    matchLabels:
+      app: nginx

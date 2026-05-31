@@ -1,0 +1,94 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: rwejlgaard/manifestation-operator
+  pullPolicy: IfNotPresent
+  # Defaults to .Chart.AppVersion when empty
+  tag: ""
+
+imagePullSecrets: []
+
+replicas: 1
+
+leaderElection:
+  enabled: true
+
+healthProbe:
+  port: 8081
+
+metrics:
+  enabled: true
+  port: 8443
+  service:
+    type: ClusterIP
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+# The mutating webhook is the heart of the operator: it injects the scheduling gate that
+# holds pods in limbo. Without it, nothing gets gated and the operator has nothing to do.
+webhook:
+  enabled: true
+  # Port the webhook server listens on inside the pod.
+  port: 9443
+  # fail | ignore. Ignore keeps pod creation working if the operator is down (recommended).
+  failurePolicy: ignore
+  # Only namespaces carrying this label get their pods gated. Keeps blast radius opt-in.
+  namespaceSelector:
+    matchLabels:
+      manifestation.pez.sh/enabled: "true"
+  # TLS for the webhook. cert-manager is required and must already be installed.
+  certManager:
+    # Issue a self-signed Issuer + Certificate for the webhook serving cert. Set false to
+    # bring your own Certificate/secret (see existingSecret).
+    enabled: true
+    # Duration/renewBefore for the generated Certificate.
+    duration: 8760h    # 1y
+    renewBefore: 720h  # 30d
+  # Secret holding tls.crt/tls.key mounted into the manager. When certManager.enabled is
+  # true the chart creates a Certificate that writes to this secret.
+  certSecretName: ""   # defaults to <fullname>-webhook-cert
+
+crds:
+  install: true
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+securityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+extraArgs: []
+extraEnv: []

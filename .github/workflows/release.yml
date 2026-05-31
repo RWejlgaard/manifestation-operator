@@ -1,0 +1,150 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      released: ${{ steps.bump.outputs.released }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine next version from conventional commit
+        id: bump
+        run: |
+          set -euo pipefail
+
+          subject="$(git log -1 --pretty=%s)"
+          echo "Commit subject: $subject"
+
+          latest_tag="$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)"
+          if [ -z "$latest_tag" ]; then
+            latest_tag="v0.0.0"
+          fi
+          echo "Latest tag: $latest_tag"
+
+          ver="${latest_tag#v}"
+          major="${ver%%.*}"
+          rest="${ver#*.}"
+          minor="${rest%%.*}"
+          patch="${rest#*.}"
+
+          type="$(printf '%s' "$subject" | sed -nE 's/^([a-zA-Z]+)(\([^)]+\))?:.*/\1/p')"
+          case "$type" in
+            major) bump="major" ;;
+            feat)  bump="minor" ;;
+            fix)   bump="patch" ;;
+            *)     bump="none" ;;
+          esac
+          echo "Bump: $bump"
+
+          if [ "$bump" = "none" ]; then
+            echo "No release-worthy commit. Skipping."
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          case "$bump" in
+            major) major=$((major+1)); minor=0; patch=0 ;;
+            minor) minor=$((minor+1)); patch=0 ;;
+            patch) patch=$((patch+1)) ;;
+          esac
+
+          new_version="v${major}.${minor}.${patch}"
+          echo "New version: $new_version"
+          echo "version=$new_version" >> "$GITHUB_OUTPUT"
+          echo "released=true" >> "$GITHUB_OUTPUT"
+
+  docker:
+    needs: version
+    if: needs.version.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PAT }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            rwejlgaard/manifestation-operator:${{ needs.version.outputs.version }}
+            rwejlgaard/manifestation-operator:latest
+
+  chart:
+    needs: [version, docker]
+    if: needs.version.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: azure/setup-helm@v5
+        with:
+          version: v3.21.0
+
+      - name: Stamp appVersion and sync CRDs
+        run: |
+          set -euo pipefail
+          version="${{ needs.version.outputs.version }}"
+          # Strip leading v for appVersion
+          appver="${version#v}"
+          sed -i "s/^appVersion:.*/appVersion: \"${appver}\"/" charts/manifestation-operator/Chart.yaml
+          ./hack/sync-crds.sh
+          grep '^appVersion:' charts/manifestation-operator/Chart.yaml
+
+      - name: Helm package
+        run: |
+          mkdir -p dist
+          helm package charts/manifestation-operator -d dist
+          ls dist
+
+      - name: Helm registry login
+        run: |
+          echo "${{ secrets.DOCKERHUB_PAT }}" | \
+            helm registry login registry-1.docker.io -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Helm push to Docker Hub OCI
+        run: |
+          helm push dist/manifestation-operator-chart-*.tgz oci://registry-1.docker.io/rwejlgaard
+
+  release:
+    needs: [version, docker, chart]
+    if: needs.version.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Tag commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ needs.version.outputs.version }}" -m "${{ needs.version.outputs.version }}"
+          git push origin "${{ needs.version.outputs.version }}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ needs.version.outputs.version }}" \
+            --title "${{ needs.version.outputs.version }}" \
+            --generate-notes

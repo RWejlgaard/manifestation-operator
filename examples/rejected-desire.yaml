@@ -1,0 +1,13 @@
+# The universe rejects doubt. This Desire is future tense, so it never manifests.
+# Apply it and check the status:
+#
+#   kubectl -n manifest-demo get desire nginx-will-work -o jsonpath='{.status.reason}'
+#   -> "The universe heard 'will' and felt your doubt. Speak as if it already is."
+apiVersion: manifestation.pez.sh/v1alpha1
+kind: Desire
+metadata:
+  name: nginx-will-work
+  namespace: manifest-demo
+spec:
+  manifestation: "My nginx pod will be healthy soon"
+  intensity: whisper

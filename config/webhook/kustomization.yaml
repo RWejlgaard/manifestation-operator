@@ -1,0 +1,6 @@
+resources:
+- manifests.yaml
+- service.yaml
+
+patches:
+- path: manifestation_namespace_selector_patch.yaml

@@ -1,0 +1,18 @@
+apiVersion: v2
+name: manifestation-operator-chart
+description: Manifestation operator - pods stay Pending until you speak your Desire into being
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/rwejlgaard/manifestation-operator
+sources:
+  - https://github.com/rwejlgaard/manifestation-operator
+maintainers:
+  - name: rwejlgaard
+keywords:
+  - kubernetes
+  - operator
+  - manifestation
+  - meme
+  - scheduling-gates
+  - webhook

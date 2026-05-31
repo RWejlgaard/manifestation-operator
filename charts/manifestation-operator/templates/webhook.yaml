@@ -1,0 +1,64 @@
+{{- if .Values.webhook.enabled -}}
+{{- $fullname := include "manifestation-operator.fullname" . -}}
+{{- $svc := printf "%s-webhook" $fullname -}}
+{{- $certName := printf "%s-serving-cert" $fullname -}}
+{{- $secret := .Values.webhook.certSecretName | default (printf "%s-webhook-cert" $fullname) -}}
+{{- if .Values.webhook.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ $fullname }}-selfsigned
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "manifestation-operator.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $certName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "manifestation-operator.labels" . | nindent 4 }}
+spec:
+  secretName: {{ $secret }}
+  duration: {{ .Values.webhook.certManager.duration }}
+  renewBefore: {{ .Values.webhook.certManager.renewBefore }}
+  dnsNames:
+    - {{ $svc }}.{{ .Release.Namespace }}.svc
+    - {{ $svc }}.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ $fullname }}-selfsigned
+---
+{{- end }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "manifestation-operator.labels" . | nindent 4 }}
+  {{- if .Values.webhook.certManager.enabled }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ $certName }}
+  {{- end }}
+webhooks:
+  - name: mpod-v1.kb.io
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: {{ .Values.webhook.failurePolicy | title }}
+    clientConfig:
+      service:
+        name: {{ $svc }}
+        namespace: {{ .Release.Namespace }}
+        path: /mutate-core-k8s-io-v1-pod
+        port: 443
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+    namespaceSelector:
+      {{- toYaml .Values.webhook.namespaceSelector | nindent 6 }}
+{{- end }}

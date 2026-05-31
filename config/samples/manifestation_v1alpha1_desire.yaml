@@ -1,0 +1,15 @@
+apiVersion: manifestation.pez.sh/v1alpha1
+kind: Desire
+metadata:
+  labels:
+    app.kubernetes.io/name: manifestation-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: nginx-is-serving
+spec:
+  # Present tense. As if it is already true. The universe does not respond to doubt.
+  manifestation: "My nginx pod is healthy and serving traffic"
+  intensity: chant
+  # Optional: target specific pods. Omit to bless every awaiting pod in the namespace.
+  selector:
+    matchLabels:
+      app: nginx

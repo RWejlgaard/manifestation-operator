@@ -1,0 +1,28 @@
+{{ include "manifestation-operator.fullname" . }} {{ .Chart.AppVersion }} installed in namespace {{ .Release.Namespace }}.
+
+Check the operator is running:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+1. Opt a namespace into manifestation (its pods will be born into limbo):
+     kubectl label namespace <your-namespace> manifestation.pez.sh/enabled=true
+
+2. Create something. Watch it sit Pending / SchedulingGated:
+     kubectl -n <your-namespace> create deployment nginx --image=nginx
+     kubectl -n <your-namespace> get pods
+
+3. Speak your Desire into being (present tense, as if already true):
+     cat <<EOF | kubectl apply -f -
+     apiVersion: manifestation.pez.sh/v1alpha1
+     kind: Desire
+     metadata:
+       name: nginx-is-serving
+       namespace: <your-namespace>
+     spec:
+       manifestation: "My nginx pod is healthy and serving traffic"
+     EOF
+
+   The pod schedules. You did that. With your mind.
+{{- if .Values.webhook.enabled }}
+
+NOTE: the mutating webhook requires cert-manager to be installed in the cluster.
+{{- end }}

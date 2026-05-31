@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- manifestation_v1alpha1_desire.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
