@@ -19,6 +19,8 @@ spec:
         {{- end }}
       labels:
         {{- include "manifestation-operator.selectorLabels" . | nindent 8 }}
+        # Never gate the operator's own pod, or it can never start to ungate anyone else.
+        manifestation.pez.sh/skip: "true"
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

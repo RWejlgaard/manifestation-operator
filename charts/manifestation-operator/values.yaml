@@ -36,10 +36,20 @@ webhook:
   port: 9443
   # fail | ignore. Ignore keeps pod creation working if the operator is down (recommended).
   failurePolicy: ignore
-  # Only namespaces carrying this label get their pods gated. Keeps blast radius opt-in.
+  # Which namespaces get their pods gated. Default: everything EXCEPT control-plane and
+  # supporting namespaces (gating those deadlocks the cluster). The operator's own pod
+  # always self-skips via the manifestation.pez.sh/skip label, so its namespace is safe
+  # even if not excluded here. To go back to opt-in instead, replace this with:
+  # matchLabels: { manifestation.pez.sh/enabled: "true" }.
   namespaceSelector:
-    matchLabels:
-      manifestation.pez.sh/enabled: "true"
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values:
+          - kube-system
+          - kube-node-lease
+          - kube-public
+          - cert-manager
   # TLS for the webhook. cert-manager is required and must already be installed.
   certManager:
     # Issue a self-signed Issuer + Certificate for the webhook serving cert. Set false to

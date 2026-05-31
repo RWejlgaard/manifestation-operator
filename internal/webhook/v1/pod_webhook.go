@@ -37,9 +37,9 @@ func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// The namespaceSelector on the generated webhook config (config/webhook/manifests.yaml)
-// limits this to namespaces labelled manifestation.pez.sh/enabled=true, so an outage of
-// the webhook cannot freeze pod creation cluster-wide.
+// The namespaceSelector in the webhook config gates pods in every namespace except the
+// control-plane ones; failurePolicy=ignore means an outage of the webhook fails open
+// (pods schedule normally) rather than freezing pod creation cluster-wide.
 // +kubebuilder:webhook:path=/mutate-core-k8s-io-v1-pod,mutating=true,failurePolicy=ignore,sideEffects=None,groups="",resources=pods,verbs=create,versions=v1,name=mpod-v1.kb.io,admissionReviewVersions=v1
 
 // PodCustomDefaulter holds a pod in limbo by injecting a scheduling gate at creation

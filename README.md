@@ -38,8 +38,8 @@ You did that. With your mind.
 
 There is real engineering under the joke.
 
-1. A **mutating admission webhook** intercepts every pod created in a namespace
-   labelled `manifestation.pez.sh/enabled=true` and injects a
+1. A **mutating admission webhook** intercepts every pod created in the cluster (except
+   control-plane namespaces like `kube-system`) and injects a
    [scheduling gate](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-scheduling-readiness/)
    named `manifestation.pez.sh/awaiting-manifestation`. The scheduler refuses to bind a
    gated pod, so it sits `Pending` / `SchedulingGated` indefinitely. No CPU burned, no
@@ -146,14 +146,20 @@ kubectl -n manifest-demo get desire    # watch it flip to Manifested
 kubectl -n manifest-demo get pods      # nginx is Running
 ```
 
-To opt a namespace into manifestation:
+By default every namespace is subject to manifestation except the control-plane ones
+(`kube-system`, `kube-node-lease`, `kube-public`, `cert-manager`). A single pod can
+refuse the journey with the label `manifestation.pez.sh/skip=true`, if it is the kind of
+pod that does not believe in anything.
+
+Prefer the cautious life? Switch back to opt-in by setting the webhook to match only
+labelled namespaces:
 
 ```sh
+# Helm
+helm upgrade ... --set-json 'webhook.namespaceSelector={"matchLabels":{"manifestation.pez.sh/enabled":"true"}}'
+# then label the namespaces you want gated
 kubectl label namespace <ns> manifestation.pez.sh/enabled=true
 ```
-
-A single pod can refuse the journey with the label `manifestation.pez.sh/skip=true`,
-if it is the kind of pod that does not believe in anything.
 
 ### Local development
 
@@ -166,10 +172,12 @@ make run                  # run the controller locally (webhook needs certs)
 
 ## Safety
 
-The webhook's `failurePolicy` is `Ignore` and it is scoped by `namespaceSelector` to
-opted-in namespaces only. If the operator is down, pod creation everywhere else is
-unaffected - manifestation is opt-in, not a cluster-wide hostage situation. Funny once,
-an incident twice.
+The webhook's `failurePolicy` is `Ignore`, so if the operator is down pods schedule
+normally (fail-open) instead of pod creation freezing. Control-plane namespaces are
+always excluded and the operator self-skips its own pod via
+`manifestation.pez.sh/skip=true` - otherwise it could never start to release anyone.
+Applying to the whole cluster is the fun setting; it is also the one that turns a quiet
+afternoon into an incident, so know your cluster before you flip it on in production.
 
 ## License
 

@@ -29,6 +29,8 @@ spec:
       labels:
         control-plane: controller-manager
         app.kubernetes.io/name: manifestation-operator
+        # Never gate the operator's own pod, or it can never start to ungate anyone else.
+        manifestation.pez.sh/skip: "true"
     spec:
       # TODO(user): Uncomment the following code to configure the nodeAffinity expression
       # according to the platforms which are supported by your solution.

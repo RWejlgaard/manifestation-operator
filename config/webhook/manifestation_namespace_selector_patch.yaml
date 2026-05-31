@@ -1,5 +1,7 @@
-# Limit the pod mutating webhook to namespaces that opted into manifestation. Without
-# this, every pod in the cluster would be born into limbo (funny once, then an incident).
+# Gate pods in EVERY namespace, except the control-plane and supporting namespaces. If
+# those were gated, the cluster's own plumbing (and this operator) would never schedule
+# and nothing could ever ungate anything. The operator pod also self-skips via the
+# manifestation.pez.sh/skip label as defense in depth.
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -7,5 +9,12 @@ metadata:
 webhooks:
 - name: mpod-v1.kb.io
   namespaceSelector:
-    matchLabels:
-      manifestation.pez.sh/enabled: "true"
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values:
+          - kube-system
+          - kube-node-lease
+          - kube-public
+          - cert-manager
+          - manifestation-operator-system

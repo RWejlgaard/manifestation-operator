@@ -4,13 +4,12 @@
 #   kubectl -n manifest-demo get pods         # nginx sits Pending / SchedulingGated
 #   kubectl -n manifest-demo apply -f -        # ...until you manifest it (see Desire below)
 #
-# The namespace opts into manifestation. Every pod born here enters limbo.
+# Any non-control-plane namespace is subject to manifestation by default, so every pod
+# born here enters limbo.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: manifest-demo
-  labels:
-    manifestation.pez.sh/enabled: "true"
 ---
 # This deployment will NOT schedule. Its pods get a scheduling gate at birth and sit
 # Pending until a worthy Desire releases them.
