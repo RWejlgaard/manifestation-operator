@@ -85,14 +85,61 @@ infrastructure.
 Requires a cluster running Kubernetes **v1.27+** (scheduling gates) and
 [cert-manager](https://cert-manager.io/) for the webhook's TLS.
 
+### Install with Helm
+
+The chart is published as an OCI artifact on Docker Hub:
+
+```sh
+helm install manifestation-operator \
+  oci://registry-1.docker.io/rwejlgaard/manifestation-operator-chart \
+  --namespace manifestation-operator-system --create-namespace
+```
+
+Common overrides:
+
+```sh
+# Pin a version (recommended)
+helm install manifestation-operator \
+  oci://registry-1.docker.io/rwejlgaard/manifestation-operator-chart \
+  --version 1.0.0 \
+  --namespace manifestation-operator-system --create-namespace
+
+# Bring your own webhook cert instead of cert-manager
+helm install manifestation-operator \
+  oci://registry-1.docker.io/rwejlgaard/manifestation-operator-chart \
+  --set webhook.certManager.enabled=false \
+  --set webhook.certSecretName=my-webhook-cert \
+  --namespace manifestation-operator-system --create-namespace
+```
+
+See [`charts/manifestation-operator/values.yaml`](charts/manifestation-operator/values.yaml)
+for the full set of knobs (webhook scope, metrics, RBAC, resources). To upgrade or remove:
+
+```sh
+helm upgrade manifestation-operator \
+  oci://registry-1.docker.io/rwejlgaard/manifestation-operator-chart \
+  -n manifestation-operator-system
+
+helm uninstall manifestation-operator -n manifestation-operator-system
+```
+
+`helm uninstall` leaves the CRD in place (`helm.sh/resource-policy: keep`) so your
+`Desire` objects survive. Delete it by hand if you truly want to let go:
+`kubectl delete crd desires.manifestation.pez.sh`.
+
+### Install with kustomize
+
 ```sh
 # Build and push your image
 make docker-build docker-push IMG=<your-registry>/manifestation-operator:latest
 
 # Install the CRD and deploy the operator (webhook + cert-manager wired in)
 make deploy IMG=<your-registry>/manifestation-operator:latest
+```
 
-# Run the demo
+### Run the demo
+
+```sh
 kubectl apply -f examples/demo.yaml
 kubectl -n manifest-demo get pods      # nginx is Pending / SchedulingGated
 kubectl -n manifest-demo get desire    # watch it flip to Manifested
