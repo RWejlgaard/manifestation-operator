@@ -11,7 +11,8 @@ NAMESPACE      NAME                     READY   STATUS            REASON
 manifest-demo  nginx-7c9d-abcde         0/1     Pending           SchedulingGated
 ```
 
-That pod is not stuck. It is in **limbo**, waiting for you to speak your truth.
+That pod is not stuck. It is in **limbo**, waiting for you to speak your truth. And no,
+checking `kubectl describe` for the fifth time will not help. It can tell you are anxious.
 
 ```yaml
 apiVersion: manifestation.pez.sh/v1alpha1
@@ -24,12 +25,14 @@ spec:
   intensity: chant
 ```
 
+You have to really believe it, though. The scheduler can tell.
+
 ```
 NAMESPACE      NAME                     READY   STATUS    REASON
 manifest-demo  nginx-7c9d-abcde         1/1     Running
 ```
 
-Sababa. You did that. With your mind.
+You did that. With your mind.
 
 ## How it works
 
@@ -74,7 +77,8 @@ persists.
 - `Everything is fine` *(it is)*
 
 `spec.intensity` (`whisper` / `speak` / `shout` / `chant`) does not change physics.
-It changes you.
+It changes you. Studies (none) show `chant` users report 40% more alignment with their
+infrastructure.
 
 ## Quick start
 
@@ -101,7 +105,8 @@ To opt a namespace into manifestation:
 kubectl label namespace <ns> manifestation.pez.sh/enabled=true
 ```
 
-A single pod can refuse the journey with the label `manifestation.pez.sh/skip=true`.
+A single pod can refuse the journey with the label `manifestation.pez.sh/skip=true`,
+if it is the kind of pod that does not believe in anything.
 
 ### Local development
 
